@@ -380,6 +380,7 @@ func isWhiteInCheck(board [64]int) bool{
 	if whiteKingPosition - 7 >= 0 && (whiteKingPosition - 7) % 8 > 0 && board[whiteKingPosition - 7] == -1 {
 		return true
 	}
+
 	return false
 }
 
@@ -1430,9 +1431,10 @@ func generateWhiteMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 	return boards
 }
 
+
 func eval(board [64]int) float32{
 
-	if len(generateBlackMoves(board)) == 0{
+	if len(generateBlackMoves(board)) == 0 && isBlackInCheck(board){
 		return 9999.99
 	}
 	
@@ -1619,7 +1621,7 @@ func main(){
 	
 		//8/p7/5k2/p4p1p/P1N2b2/1PP5/4R1PP/3r3K
 		//fmt.Println(boardToFEN(board))
-		depth := 5
+		depth := 6
 		var nb [64]int
 		maxScore := -9999.99
 		startTime := time.Now()
