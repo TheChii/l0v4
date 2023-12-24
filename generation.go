@@ -1431,10 +1431,24 @@ func generateWhiteMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 	return boards
 }
 
+type KeyType [64]int
+var myMap = make(map[KeyType]float32)
+func addValue(key KeyType, value float32) {
+    myMap[key] = value
+}
+
+func findValue(key KeyType) (float32, bool) {
+    value, found := myMap[key]
+    return value, found
+}
 
 func eval(board [64]int) float32{
-
+	value, found := findValue(board)
+	if found{
+		return value
+	}
 	if len(generateBlackMoves(board)) == 0 && isBlackInCheck(board){
+		addValue(board, 9999.99)
 		return 9999.99
 	}
 	
@@ -1481,7 +1495,7 @@ func eval(board [64]int) float32{
 	}
 	score -= float32(stackedWhitePawns /2)
 	score += float32(stackedBlackPanws /2)
-
+	addValue(board, score)
 	return score
 }
 
