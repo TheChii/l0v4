@@ -8,7 +8,9 @@ import (
 )
 
 var pieceValues map[string]int
-var knightHeuristicMap [64]int
+var knightHeuristicMap [64]float32
+var generalHeuristicMap [64]float32
+
 func init() {
     pieceValues = map[string]int{
         "p":   -1,
@@ -24,15 +26,25 @@ func init() {
         "k":   -999,
         "K":   999,
     }
-	knightHeuristicMap = [64]int{
-		0, 1, 3, 3, 3, 3, 1, 0,
-		1, 1, 3, 3, 3, 3, 1, 1,
-		2, 3, 3, 3, 3, 3, 3, 2,
-		2, 3, 3, 3, 3, 3, 3, 2,
-		2, 3, 3, 3, 3, 3, 3, 2,
-		2, 3, 3, 3, 3, 3, 3, 2,
-		1, 1, 3, 3, 3, 3, 1, 1,
-		0, 1, 3, 3, 3, 3, 1, 0,
+	knightHeuristicMap = [64]float32{
+		0.33, 0.33, 0.5, 0.5, 0.5, 0.5, 0.33, 0.33,
+		0.33, 0.5, 0.75, 0.75, 0.75, 0.75, 0.5, 0.33,
+		0.5, 1.0, 1.0, 1.0,1.0, 1.0, 1.0, 0.5, 
+		0.5, 1.0, 1.0, 1.0,1.0, 1.0, 1.0, 0.5, 
+		0.5, 1.0, 1.0, 1.0,1.0, 1.0, 1.0, 0.5, 
+		0.5, 1.0, 1.0, 1.0,1.0, 1.0, 1.0, 0.5, 
+		0.33, 0.5, 0.75, 0.75, 0.75, 0.75, 0.5, 0.33,
+		0.33, 0.33, 0.5, 0.5, 0.5, 0.5, 0.33, 0.33,
+	}
+	generalHeuristicMap = [64]float32{
+		0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90,
+		0.90, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
+		0.95, 1.0, 1.0, 1.0, 1.0 , 1.0, 1.0, 0.95,
+		1.0, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.0,
+		1.0, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.0,
+		0.95, 1.0, 1.0, 1.0, 1.0 , 1.0, 1.0, 0.95,
+		0.90, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
+		0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90,
 	}
 }
 func numberOfPieces(board [64]int) int{
@@ -40,7 +52,7 @@ func numberOfPieces(board [64]int) int{
 	for _, piece := range board{
 		if piece != 0 {
 			nmbr++
-		}
+		} 
 	}
 
 	return nmbr
@@ -1418,23 +1430,42 @@ func generateWhiteMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 	return boards
 }
 
-func eval(board [64]int) int{
-	piecesNum := numberOfPieces(board)
-	if piecesNum <= 17 {
-		if len(generateBlackMoves(board)) == 0{
-			return 9999
-		}
-	}
-	var score int
-	for _, piece := range board{
-		if abs(piece) != 4 {
-			score += piece
-		} else {
-			score += piece/4 * knightHeuristicMap[abs(piece)]	
-		}
-	}
-	var stackedWhitePawns, stackedBlackPanws int = -1,-1
+func eval(board [64]int) float32{
 
+	if len(generateBlackMoves(board)) == 0{
+		return 9999.99
+	}
+	
+	var whiteBishops, blackBishops int 
+	var score float32
+	for index, piece := range board{
+		switch abs(piece) {
+		case 1:
+			score += generalHeuristicMap[index] * float32(piece)
+		case 3:
+			score+= knightHeuristicMap[index] * 3.25 * generalHeuristicMap[index] * float32(piece/3)
+		case 4:
+			score += 3.25 * float32(piece/4) *  generalHeuristicMap[index]
+			if piece < 0 {
+				blackBishops++
+			} else {
+				whiteBishops++
+			}
+		case 5:
+			score += 5.0 * float32(piece/5) * generalHeuristicMap[index]
+		case 10:
+			score += 9.0 * float32(piece/10) * generalHeuristicMap[index]
+		}
+	}
+
+	if blackBishops >= 2 {
+		score -= 0.5
+	}	
+	if whiteBishops >= 2 {
+		score += 0.5
+	}
+
+	var stackedWhitePawns, stackedBlackPanws int = -1,-1
 	for col_index := 0; col_index <= 7; col_index++{
 		var new_col_index int
 		for new_col_index < 64 {
@@ -1446,15 +1477,15 @@ func eval(board [64]int) int{
 			new_col_index += 8
 		}
 	}
-	score -= stackedWhitePawns 
-	score += stackedBlackPanws 
+	score -= float32(stackedWhitePawns /2)
+	score += float32(stackedBlackPanws /2)
 
 	return score
 }
 
 
 	
-func Minimax(board [64]int, depth, alpha, beta, color int) int {
+func Minimax(board [64]int, depth int, alpha, beta float32, color int) float32 {
     if depth == 0 {
         return eval(board)
     }
@@ -1472,7 +1503,7 @@ func Minimax(board [64]int, depth, alpha, beta, color int) int {
     }
 
     if color == 1 {
-        maxScore := -9999
+        maxScore := float32(-9999.99)
         for _, move := range moves {
             score := Minimax(move, depth-1, alpha, beta, -color)
             if score > maxScore {
@@ -1485,7 +1516,7 @@ func Minimax(board [64]int, depth, alpha, beta, color int) int {
         }
         return maxScore
     } else {
-        minScore := 9999
+        minScore := float32(9999.0)
         for _, move := range moves {
             score := Minimax(move, depth-1, alpha, beta, -color)
             if score < minScore {
@@ -1499,6 +1530,7 @@ func Minimax(board [64]int, depth, alpha, beta, color int) int {
         return minScore
     }
 }
+
 var pieceToFEN = map[int]string{
 	-1:   "p",
 	1:    "P",
@@ -1546,6 +1578,21 @@ func boardToFEN(board [64]int) string {
 	fen += " w - - 0 1"
 	return fen 
 }
+
+func PrettyPrintBoard(board [64]int) {
+	fmt.Println("  a b c d e f g h")
+	fmt.Println(" +----------------")
+	for rank := 7; rank >= 0; rank-- {
+		fmt.Printf("%d|", rank+1)
+		for file := 0; file < 8; file++ {
+			index := rank*8 + file
+			piece := pieceToFEN[board[index]]
+			fmt.Printf(" %s", piece)
+		}
+		fmt.Println()
+	}
+	fmt.Println(" +----------------")
+}
 //-5-3-4-10-999-4-3-5-1-1-1-1-1-1-1-1000000000000000000000000000000001111111153410999435 
 func main(){
 	//"8/8/1n6/8/8/8/8/8"
@@ -1572,20 +1619,21 @@ func main(){
 	
 		//8/p7/5k2/p4p1p/P1N2b2/1PP5/4R1PP/3r3K
 		//fmt.Println(boardToFEN(board))
-		depth := 6
+		depth := 5
 		var nb [64]int
-		maxScore := -9999
+		maxScore := -9999.99
 		startTime := time.Now()
 		for _, move := range generateWhiteMoves(board) {
-			score := Minimax(move, depth-1, -9999, 9999, -1)
-			if score > maxScore {
-				maxScore = score
+			score := Minimax(move, depth-1, -9999.9, 9999.9, -1)
+			if score > float32(maxScore){
+				maxScore = float64(score)
 				nb = move
 			}
 		}
 		endTime := time.Now()
 		elapsed := endTime.Sub(startTime)
 	
+		fmt.Println(maxScore)
 		fmt.Println(boardToFEN(nb))
 
 		fmt.Printf("Time taken: %s\n", elapsed)
@@ -1593,4 +1641,3 @@ func main(){
 		
 	}
 }
-
