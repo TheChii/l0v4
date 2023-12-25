@@ -5,6 +5,10 @@ import (
 	"strconv"
 	"unicode"
 	"time"
+	//"strings"
+	"os"
+	//"bufio"
+	"os/exec"
 )
 
 var pieceValues map[string]int
@@ -13,6 +17,9 @@ var generalHeuristicMap [64]float32
 
 var openingsMap = map[string]string{
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR",
+	"rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR": "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R",
+	"r1bqkbnr/pp1ppppp/2n5/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R": "r1bqkbnr/pp1ppppp/2n5/1Bp5/4P3/5N2/PPPP1PPP/RNBQK2R",
+	"r1bqkbnr/pp1p1ppp/2n1p3/1Bp5/4P3/5N2/PPPP1PPP/RNBQK2R": "r1bqkbnr/pp1p1ppp/2n1p3/1Bp5/4P3/5N2/PPPP1PPP/RNBQ1RK1",
 	"rnbqkbnr/ppp2ppp/3p4/8/3pP3/5N2/PPP2PPP/RNBQKB1R": "rnbqkbnr/ppp2ppp/3p4/8/3NP3/8/PPP2PPP/RNBQKB1R",
 	"r1bqkbnr/ppp2ppp/2np4/8/3NP3/8/PPP2PPP/RNBQKB1R": "r1bqkbnr/ppp2ppp/2Np4/8/4P3/8/PPP2PPP/RNBQKB1R",
 	"rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R",
@@ -21,6 +28,31 @@ var openingsMap = map[string]string{
 	"rnbqkbnr/ppp2ppp/3p4/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R": "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R",
 	"r1bqkbnr/p1p2ppp/2pp4/8/4P3/8/PPP2PPP/RNBQKB1R": "r1bqkbnr/p1p2ppp/2pp4/8/4P3/2N5/PPP2PPP/R1BQKB1R",
 	"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR": "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR",
+	"r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R": "r1bqkbnr/1ppp1ppp/p1n5/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R",
+	"r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R": "r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1",
+	"r1bqk2r/1pppbppp/p1n2n2/4p3/B3P3/2N2N2/PPPP1PPP/R1BQK2R": "r1bqk2r/1pppbppp/p1n2n2/4p3/B2PP3/2N2N2/PPP2PPP/R1BQK2R",
+	"r1bqkb1r/1ppp1ppp/p1n5/4p3/B3n3/5N2/PPPP1PPP/RNBQ1RK1": "r1bqkb1r/1ppp1ppp/p1n5/4p3/B2Pn3/5N2/PPP2PPP/RNBQ1RK1",
+	"r1bqkb1r/2pp1ppp/p1n5/1p2p3/B2Pn3/5N2/PPP2PPP/RNBQ1RK1": "r1bqkb1r/2pp1ppp/p1n5/1p2p3/3Pn3/1B3N2/PPP2PPP/RNBQ1RK1",
+	"r1bqkb1r/2p2ppp/p1n5/1p1pp3/3Pn3/1B3N2/PPP2PPP/RNBQ1RK1": "r1bqkb1r/2p2ppp/p1n5/1p1pP3/4n3/1B3N2/PPP2PPP/RNBQ1RK1",
+	"r2qkb1r/2p2ppp/p1n1b3/1p1pP3/4n3/1B3N2/PPP2PPP/RNBQ1RK1": "r2qkb1r/2p2ppp/p1n1b3/1p1pP3/4n3/1BN2N2/PPP2PPP/R1BQ1RK1",
+	"r2qkb1r/2p2ppp/p1n1b3/1p1pP3/8/1Bn2N2/PPP2PPP/R1BQ1RK1": "r2qkb1r/2p2ppp/p1n1b3/1p1pP3/8/1BP2N2/P1P2PPP/R1BQ1RK1",
+	"r2qkb1r/2p3pp/p1n1bp2/1p1pP3/8/1BP2N2/P1P2PPP/R1BQ1RK1": "r2qkb1r/2p3pp/p1n1bp2/1p1pP3/P7/1BP2N2/2P2PPP/R1BQ1RK1",
+	"r2qkb1r/2p3pp/p3bp2/1p1pn3/P7/1BP2N2/2P2PPP/R1BQ1RK1": "r2qkb1r/2p3pp/p3bp2/1p1pN3/P7/1BP5/2P2PPP/R1BQ1RK1",
+	"r2qkb1r/2p3pp/p3b3/1p1pp3/P7/1BP5/2P2PPP/R1BQ1RK1": "r2qkb1r/2p3pp/p3b3/1p1pp2Q/P7/1BP5/2P2PPP/R1B2RK1",
+	"r2qkb1r/2p2bpp/p7/1p1pp2Q/P7/1BP5/2P2PPP/R1B2RK1": "r2qkb1r/2p2bpp/p7/1p1pQ3/P7/1BP5/2P2PPP/R1B2RK1",
+	"r3kb1r/2p1qbpp/p7/1p1pQ3/P7/1BP5/2P2PPP/R1B2RK1": "r3kb1r/2p1Qbpp/p7/1p1p4/P7/1BP5/2P2PPP/R1B2RK1",
+	"r3k2r/2p1bbpp/p7/1p1p4/P7/1BP5/2P2PPP/R1B2RK1": "r3k2r/2p1bbpp/p7/1p1p4/P7/1BP5/2P2PPP/R1B1R1K1",
+	"r3k2r/2p1bbpp/p7/3p4/p7/1BP5/2P2PPP/R1B1R1K1": "r3k2r/2p1bbpp/p7/3p4/p7/2P5/B1P2PPP/R1B1R1K1",
+	"r3k2r/4bbpp/p7/2pp4/p7/2P5/B1P2PPP/R1B1R1K1": "r3k2r/4bbpp/p7/2pp2B1/p7/2P5/B1P2PPP/R3R1K1",
+	"4k2r/r3bbpp/p7/2pp2B1/p7/2P5/B1P2PPP/R3R1K1": "4k2r/r3bbpp/p7/2pp2B1/p7/2P5/B1P2PPP/1R2R1K1",
+	"4k2r/r3bbpp/p7/2pp2B1/8/p1P5/B1P2PPP/1R2R1K1": "1R2k2r/r3bbpp/p7/2pp2B1/8/p1P5/B1P2PPP/4R1K1",
+	"1R5r/r2kbbpp/p7/2pp2B1/8/p1P5/B1P2PPP/4R1K1": "1R5r/r2kRbpp/p7/2pp2B1/8/p1P5/B1P2PPP/6K1",
+	"1R5r/r3Rbpp/p1k5/2pp2B1/8/p1P5/B1P2PPP/6K1": "7R/r3Rbpp/p1k5/2pp2B1/8/p1P5/B1P2PPP/6K1",
+	"7R/4rbpp/p1k5/2pp2B1/8/p1P5/B1P2PPP/6K1": "7R/4Bbpp/p1k5/2pp4/8/p1P5/B1P2PPP/6K1",
+	"7R/4Bbp1/p1k5/2pp3p/8/p1P5/B1P2PPP/6K1": "3R4/4Bbp1/p1k5/2pp3p/8/p1P5/B1P2PPP/6K1",
+	"3R4/4B1p1/p1k3b1/2pp3p/8/p1P5/B1P2PPP/6K1": "8/4B1p1/p1kR2b1/2pp3p/8/p1P5/B1P2PPP/6K1",
+	"8/4B1p1/p2R2b1/1kpp3p/8/p1P5/B1P2PPP/6K1": "8/4B1p1/p5R1/1kpp3p/8/p1P5/B1P2PPP/6K1",
+
 }
 
 func init() {
@@ -52,8 +84,8 @@ func init() {
 		0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90,
 		0.90, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
 		0.95, 1.0, 1.0, 1.0, 1.0 , 1.0, 1.0, 0.95,
-		1.0, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.0,
-		1.0, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.0,
+		1.0, 1.1, 1.12, 1.125, 1.125, 1.12, 1.12, 1.0,
+		1.0, 1.1, 1.12, 1.125, 1.125, 1.12, 1.1, 1.0,
 		0.95, 1.0, 1.0, 1.0, 1.0 , 1.0, 1.0, 0.95,
 		0.90, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
 		0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90,
@@ -467,7 +499,21 @@ func generateBlackMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 			if index + 8 < 64 && board[index+8] == 0{ //una in fata
 				new_move := makeMove(board, index, index+8)
 				if !isBlackInCheck(new_move){
-					boards = append(boards, new_move)
+					if (index + 8) / 8 == 7 {
+						new_move[index+8] = -10
+						boards = append(boards, new_move)
+
+						new_move[index+8] = -5
+						boards = append(boards, new_move)
+
+						new_move[index+8] = -4
+						boards = append(boards, new_move)
+
+						new_move[index+8] = -3
+						boards = append(boards, new_move)
+					} else {
+						boards = append(boards, new_move)
+					}
 				}		
 			}
 			if  index/8 == 1 && board[index+16] == 0 && board[index+8] == 0{ //doua in fata
@@ -479,13 +525,41 @@ func generateBlackMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 			if index+7 < 64 && board[index+7] > 0 { //atac stanga
 				new_move := makeMove(board, index, index+7)
 				if !isBlackInCheck(new_move){
-					boards = append(boards, new_move)
+					if (index + 7) / 8 == 7 {
+						new_move[index+7] = -10
+						boards = append(boards, new_move)
+
+						new_move[index+7] = -5
+						boards = append(boards, new_move)
+
+						new_move[index+7] = -4
+						boards = append(boards, new_move)
+
+						new_move[index+7] = -3
+						boards = append(boards, new_move)
+					} else {
+						boards = append(boards, new_move)
+					}
 				}	
 			}
 			if index+9 < 64 && board[index+9] > 0 { //atac dreapta
 				new_move := makeMove(board, index, index+9)
 				if !isBlackInCheck(new_move){
-					boards = append(boards, new_move)
+					if (index + 9) / 8 == 7 {
+						new_move[index+9] = -10
+						boards = append(boards, new_move)
+
+						new_move[index+9] = -5
+						boards = append(boards, new_move)
+
+						new_move[index+9] = -4
+						boards = append(boards, new_move)
+
+						new_move[index+9] = -3
+						boards = append(boards, new_move)
+					} else {
+						boards = append(boards, new_move)
+					}
 				}	
 			}
 		case -3:
@@ -961,7 +1035,21 @@ func generateWhiteMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 			if index - 8 >= 0 && board[index-8] == 0{ //una in fata
 				new_move := makeMove(board, index, index-8)
 				if !isWhiteInCheck(new_move){
-					boards = append(boards, new_move)
+					if (index - 8) / 8 == 0 {
+						new_move[index-8] = 10
+						boards = append(boards, new_move)
+
+						new_move[index-8] = 5
+						boards = append(boards, new_move)
+
+						new_move[index-8] = 4
+						boards = append(boards, new_move)
+
+						new_move[index-8] = 3
+						boards = append(boards, new_move)
+					} else {
+						boards = append(boards, new_move)
+					}
 				}		
 			}
 			if  index/8 == 6 && board[index-16] == 0 && board[index-8] == 0{ //doua in fata
@@ -973,13 +1061,41 @@ func generateWhiteMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 			if (index-7)%8 != 0 && index-7 >= 0 && board[index-7] < 0 { //atac dreapta
 				new_move := makeMove(board, index, index-7)
 				if !isWhiteInCheck(new_move){
-					boards = append(boards, new_move)
+					if (index - 7) / 8 == 0 {
+						new_move[index-7] = 10
+						boards = append(boards, new_move)
+
+						new_move[index-7] = 5
+						boards = append(boards, new_move)
+
+						new_move[index-7] = 4
+						boards = append(boards, new_move)
+
+						new_move[index-7] = 3
+						boards = append(boards, new_move)
+					} else {
+						boards = append(boards, new_move)
+					}
 				}	
 			}
 			if (index - 9)%8 != 7 && index-9 >= 0 && board[index-9] < 0 { //atac stanga
 				new_move := makeMove(board, index, index-9)
 				if !isWhiteInCheck(new_move){
-					boards = append(boards, new_move)
+					if (index - 9) / 8 == 0 {
+						new_move[index-9] = 10
+						boards = append(boards, new_move)
+
+						new_move[index-9] = 5
+						boards = append(boards, new_move)
+
+						new_move[index-9] = 4
+						boards = append(boards, new_move)
+
+						new_move[index-9] = 3
+						boards = append(boards, new_move)
+					} else {
+						boards = append(boards, new_move)
+					}
 				}	
 			}
 		case 3:
@@ -1608,7 +1724,7 @@ func boardToFEN(board [64]int) string {
 	if emptyCount > 0 {
 		fen += fmt.Sprintf("%d", emptyCount)
 	}
-	fen += " w - - 0 1"
+	fen += " b - - 0 1"
 	return fen 
 }
 
@@ -1619,64 +1735,77 @@ func getOpening(key string) (string, bool) {
 	return val, exists
 }
 
-
-
-
-func main(){
-	//"8/8/1n6/8/8/8/8/8"
-
-	//var fennot string = "r1bqkbnr/pp1pp1pp/2n5/5p2/2p1P3/8/PPPP1PPP/R1BQKBNR"
-    //board := fenToBoard(fennot)
-
-    //x := generateBlackMoves(board)
-	/*
-	for _, y := range x{
-		k := generateBlackMoves(y)
-		for _, u := range k {
-			generateBlackMoves(u)
-		}
+func AppendKeyValuePair(key, value string) error {
+	filename := "hardcoded_moves.txt"
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
 	}
-	*/
-	////fmt.Println(len(x))
-	////fmt.Println(isBlackInCheck(board))
+	defer file.Close()
 
+	line := fmt.Sprintf("%s: %s\n", key, value)
+	_, err = file.WriteString(line)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Appended: %s", line)
+	return nil
+}
+
+
+func main() {
 	checkIfOpening := true
-	for true {
+
+	for {
 		var fennot string
 		fmt.Scan(&fennot)
 
-		if checkIfOpening{
+		if checkIfOpening {
 			newBoard, isOpening := getOpening(fennot)
 			if isOpening {
-				fmt.Println(newBoard + " b - - 0 1")
+				nl := newBoard + " b - - 0 1"
+				cmd := exec.Command("py", "gui.py", nl)
+				err := cmd.Run()
+				if err != nil {
+					fmt.Println("Error running Python script:", err)
+					return
+				}
 				continue
 			} else {
 				checkIfOpening = false
 			}
 		}
-		
 
 		board := fenToBoard(fennot)
 
-		depth := 5
+		depth := 4
 		var nb [64]int
-		maxScore := -9999.99
+		var maxScore float32 = -9999.99
 		startTime := time.Now()
+
 		for _, move := range generateWhiteMoves(board) {
 			score := Minimax(move, depth-1, -9999.9, 9999.9, -1)
-			if score > float32(maxScore){
-				maxScore = float64(score)
+			if score > maxScore {
+				maxScore = score
 				nb = move
 			}
 		}
+
 		endTime := time.Now()
 		elapsed := endTime.Sub(startTime)
-	
+
 		fmt.Println(maxScore)
 		fmt.Println(boardToFEN(nb))
 
+		// Call Python script with the new FEN string
+		cmd := exec.Command("py", "gui.py", boardToFEN(nb))
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println("Error running Python script:", err)
+			return
+		}
+
 		fmt.Printf("Time taken: %s\n", elapsed)
-	
-		
 	}
 }
