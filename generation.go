@@ -11,6 +11,18 @@ var pieceValues map[string]int
 var knightHeuristicMap [64]float32
 var generalHeuristicMap [64]float32
 
+var openingsMap = map[string]string{
+	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR",
+	"rnbqkbnr/ppp2ppp/3p4/8/3pP3/5N2/PPP2PPP/RNBQKB1R": "rnbqkbnr/ppp2ppp/3p4/8/3NP3/8/PPP2PPP/RNBQKB1R",
+	"r1bqkbnr/ppp2ppp/2np4/8/3NP3/8/PPP2PPP/RNBQKB1R": "r1bqkbnr/ppp2ppp/2Np4/8/4P3/8/PPP2PPP/RNBQKB1R",
+	"rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R",
+	"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R": "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R",
+	"r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R": "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQ1RK1",
+	"rnbqkbnr/ppp2ppp/3p4/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R": "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R",
+	"r1bqkbnr/p1p2ppp/2pp4/8/4P3/8/PPP2PPP/RNBQKB1R": "r1bqkbnr/p1p2ppp/2pp4/8/4P3/2N5/PPP2PPP/R1BQKB1R",
+	"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR": "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR",
+}
+
 func init() {
     pieceValues = map[string]int{
         "p":   -1,
@@ -46,7 +58,9 @@ func init() {
 		0.90, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
 		0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90,
 	}
+
 }
+
 func numberOfPieces(board [64]int) int{
 	var nmbr int = 0
 	for _, piece := range board{
@@ -456,7 +470,7 @@ func generateBlackMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 					boards = append(boards, new_move)
 				}		
 			}
-			if  index/8 == 1 && board[index+16] == 0 { //doua in fata
+			if  index/8 == 1 && board[index+16] == 0 && board[index+8] == 0{ //doua in fata
 				new_move := makeMove(board, index, index+16)
 				if !isBlackInCheck(new_move){
 					boards = append(boards, new_move)
@@ -950,7 +964,7 @@ func generateWhiteMoves(board [64]int) [][64]int{ //-1 for black && 1 for white
 					boards = append(boards, new_move)
 				}		
 			}
-			if  index/8 == 6 && board[index-16] == 0 { //doua in fata
+			if  index/8 == 6 && board[index-16] == 0 && board[index-8] == 0{ //doua in fata
 				new_move := makeMove(board, index, index-16)
 				if !isWhiteInCheck(new_move){
 					boards = append(boards, new_move)
@@ -1435,7 +1449,7 @@ type KeyType [64]int
 var myMap = make(map[KeyType]float32)
 func addValue(key KeyType, value float32) {
     myMap[key] = value
-}
+} 
 
 func findValue(key KeyType) (float32, bool) {
     value, found := myMap[key]
@@ -1562,6 +1576,9 @@ var pieceToFEN = map[int]string{
 	999:  "K",
 }
 
+
+
+
 func boardToFEN(board [64]int) string {
 	fen := ""
 	emptyCount := 0
@@ -1595,21 +1612,16 @@ func boardToFEN(board [64]int) string {
 	return fen 
 }
 
-func PrettyPrintBoard(board [64]int) {
-	fmt.Println("  a b c d e f g h")
-	fmt.Println(" +----------------")
-	for rank := 7; rank >= 0; rank-- {
-		fmt.Printf("%d|", rank+1)
-		for file := 0; file < 8; file++ {
-			index := rank*8 + file
-			piece := pieceToFEN[board[index]]
-			fmt.Printf(" %s", piece)
-		}
-		fmt.Println()
-	}
-	fmt.Println(" +----------------")
-}
 //-5-3-4-10-999-4-3-5-1-1-1-1-1-1-1-1000000000000000000000000000000001111111153410999435 
+
+func getOpening(key string) (string, bool) {
+	val, exists := openingsMap[key]
+	return val, exists
+}
+
+
+
+
 func main(){
 	//"8/8/1n6/8/8/8/8/8"
 
@@ -1628,14 +1640,25 @@ func main(){
 	////fmt.Println(len(x))
 	////fmt.Println(isBlackInCheck(board))
 
+	checkIfOpening := true
 	for true {
 		var fennot string
 		fmt.Scan(&fennot)
+
+		if checkIfOpening{
+			newBoard, isOpening := getOpening(fennot)
+			if isOpening {
+				fmt.Println(newBoard + " b - - 0 1")
+				continue
+			} else {
+				checkIfOpening = false
+			}
+		}
+		
+
 		board := fenToBoard(fennot)
-	
-		//8/p7/5k2/p4p1p/P1N2b2/1PP5/4R1PP/3r3K
-		//fmt.Println(boardToFEN(board))
-		depth := 6
+
+		depth := 5
 		var nb [64]int
 		maxScore := -9999.99
 		startTime := time.Now()
